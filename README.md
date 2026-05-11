@@ -119,15 +119,24 @@ When `--target openclaw` or OpenClaw is detected, the install script will:
 - Copy it to `~/.claude/plugins/marketplaces/lypgithub/cc-orchestrator/`
 - Auto-configure `~/.openclaw/openclaw.json` to register the plugin
 
-### 启动服务 / Start the Service
+### 后台服务 / Background Service (macOS)
 
+安装脚本会自动将 cc-orchestrator 注册为 macOS launchd 后台服务，开机自启动：
+
+The install script automatically registers cc-orchestrator as a macOS launchd background service with auto-start on boot:
+
+| 操作 / Operation | 命令 / Command |
+|---|---|
+| 查看状态 / Check status | `launchctl list \| grep ai.cc-orchestrator` |
+| 停止服务 / Stop service | `launchctl unload ~/Library/LaunchAgents/ai.cc-orchestrator.gateway.plist` |
+| 启动服务 / Start service | `launchctl load ~/Library/LaunchAgents/ai.cc-orchestrator.gateway.plist` |
+| 查看日志 / View logs | `tail -f ~/.cc-orchestrator/logs/gateway.log` |
+| 查看错误 / View errors | `tail -f ~/.cc-orchestrator/logs/gateway.err.log` |
+
+**手动启动（开发调试用）/ Manual start (for development):**
 ```bash
-# 启动编排器服务（后台常驻）
-# Start the orchestrator daemon
 ./bin/cc-orch start [--port 17890 --max-workers 4]
-
-# 或使用编译后的版本
-# Or use the built version
+# or
 node dist/cli.js start
 ```
 

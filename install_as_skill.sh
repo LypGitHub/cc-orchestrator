@@ -251,6 +251,16 @@ main() {
     npm run build
     print_success "编译完成"
 
+    # -- Install launchd Service (auto-start on boot) ---------------------------
+    print_header "系统服务安装"
+    print_info "安装 cc-orch 为后台常驻服务..."
+    if [ -f "$SCRIPT_DIR/service/install-service.sh" ]; then
+        bash "$SCRIPT_DIR/service/install-service.sh"
+        print_success "服务已安装并启动"
+    else
+        print_warning "服务安装脚本未找到，跳过"
+    fi
+
     # -- OpenClaw Plugin (when target is openclaw or auto with OpenClaw detected) --
     if [ "$INSTALL_TARGET" = "openclaw" ] || [ -n "${OPENCLAW_HOME:-}" ] || [ -d "$HOME/.openclaw" ]; then
         install_openclaw_plugin "$SCRIPT_DIR"
@@ -260,11 +270,16 @@ main() {
 
     print_success "已装到 $SKILL_DIR"
     echo ""
-    print_info "下一步："
-    print_info "  1. 确保 claude CLI 已安装:  claude --version"
-    print_info "  2. 启动服务:  cc-orch start"
-    print_info "  3. 提交目标:  cc-orch run \"实现用户认证\" --dir ~/works/project"
-    print_info "  4. 查看状态:  cc-orch system"
+    print_info "服务状态:"
+    print_info "  cc-orch 服务已作为后台常驻进程运行"
+    print_info "  API: http://127.0.0.1:17890"
+    print_info "  日志: ~/.cc-orchestrator/logs/"
+    echo ""
+    print_info "使用方法:"
+    print_info "  提交目标:  cc-orch run \"实现用户认证\" --dir ~/works/project"
+    print_info "  查看状态:  cc-orch system"
+    print_info "  停止服务:  launchctl unload ~/Library/LaunchAgents/ai.cc-orchestrator.gateway.plist"
+    print_info "  启动服务:  launchctl load   ~/Library/LaunchAgents/ai.cc-orchestrator.gateway.plist"
 
     if [ "$INSTALL_TARGET" = "openclaw" ] || [ -d "$HOME/.openclaw" ]; then
         echo ""
@@ -278,10 +293,8 @@ main() {
     fi
 
     echo ""
-    print_info "冒烟测试（可选）："
-    print_info "  cd $SKILL_DIR"
-    print_info "  ./bin/cc-orch start &"
-    print_info "  ./bin/cc-orch run \"echo hello\" --dir /tmp"
+    print_info "冒烟测试:"
+    print_info "  cc-orch run \"echo hello\" --dir /tmp"
     echo ""
 }
 

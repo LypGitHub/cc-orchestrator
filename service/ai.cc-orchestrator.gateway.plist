@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>ai.cc-orchestrator.gateway</string>
+
+    <key>Comment</key>
+    <string>CC Orchestrator - Claude Code Process Manager</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>5</integer>
+    <key>Umask</key>
+    <integer>63</integer>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>NODE_PATH_PLACEHOLDER</string>
+      <string>dist/cli.js</string>
+      <string>start</string>
+      <string>--port</string>
+      <string>17890</string>
+      <string>--max-workers</string>
+      <string>4</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>CC_ORCH_DIR</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+      <key>HOME</key>
+      <string>USER_HOME</string>
+      <key>CC_ORCH_DATA_DIR</key>
+      <string>CC_ORCH_DATA_DIR_VALUE</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>CC_ORCH_DATA_DIR_VALUE/logs/gateway.log</string>
+    <key>StandardErrorPath</key>
+    <string>CC_ORCH_DATA_DIR_VALUE/logs/gateway.err.log</string>
+  </dict>
+</plist>
