@@ -1,6 +1,7 @@
 {
   "name": "cc-orchestrator",
   "version": "0.1.0",
+  "type": "module",
   "description": "Intelligent Claude Code process orchestrator",
   "main": "dist/index.js",
   "bin": {
@@ -28,6 +29,7 @@
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
   },
+  "license": "MIT",
   "engines": {
     "node": ">=20.0.0"
   }
