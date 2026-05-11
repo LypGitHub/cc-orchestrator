@@ -1,5 +1,5 @@
 import type { StreamMessage, WorkerStats } from './types.js';
-import { updateWorkerStatus, logTranscriptMessage } from './db.js';
+import { updateWorkerStatus, logEvent } from './db.js';
 
 // Claude Code stream-json message format (actual output)
 interface ClaudeMessage {
@@ -113,28 +113,29 @@ export class SDKAdapter {
   }
 
   processMessage(workerId: string, goalId: string, message: StreamMessage): Partial<WorkerStats> | null {
-    // Log raw message
-    logTranscriptMessage(workerId, goalId, {
-      type: message.type,
-      content: message.content,
-      tool_name: message.tool_name,
-      tool_input: message.tool_input ? JSON.stringify(message.tool_input) : undefined,
-      tool_output: message.tool_output ? JSON.stringify(message.tool_output) : undefined,
-      error: message.error,
-      thinking: message.thinking,
-      usage_input_tokens: message.usage?.input_tokens,
-      usage_output_tokens: message.usage?.output_tokens,
-    });
-
+    // Event-driven logging: only key events, not every message
     switch (message.type) {
       case 'tool_use': {
-        return this.handleToolUse(workerId, message);
+        return this.handleToolUse(workerId, goalId, message);
       }
       case 'done': {
+        logEvent({
+          worker_id: workerId,
+          goal_id: goalId,
+          event_type: 'task_complete',
+          summary: message.content?.slice(0, 500) || 'Task completed',
+        });
         updateWorkerStatus(workerId, 'stopped');
         return null;
       }
       case 'error': {
+        logEvent({
+          worker_id: workerId,
+          goal_id: goalId,
+          event_type: 'task_error',
+          summary: message.error?.slice(0, 500) || 'Unknown error',
+          details: { error: message.error },
+        });
         updateWorkerStatus(workerId, 'error');
         return null;
       }
@@ -143,18 +144,41 @@ export class SDKAdapter {
     }
   }
 
-  private handleToolUse(_workerId: string, message: StreamMessage): Partial<WorkerStats> | null {
+  private handleToolUse(workerId: string, goalId: string, message: StreamMessage): Partial<WorkerStats> | null {
     if (!message.tool_name) return null;
 
     const update: Partial<WorkerStats> = {
       toolsUsed: { [message.tool_name]: 1 },
     };
 
+    // Only log key file operations as events
     if (message.tool_name === 'Edit' || message.tool_name === 'Write') {
       const input = message.tool_input || {};
       const filePath = (input.file_path || input.path || '') as string;
       if (filePath) {
-        // File modification tracked at orchestrator level
+        logEvent({
+          worker_id: workerId,
+          goal_id: goalId,
+          event_type: 'file_write',
+          file_path: filePath,
+          tool_name: message.tool_name,
+          summary: `${message.tool_name}: ${filePath}`,
+        });
+      }
+    }
+
+    if (message.tool_name === 'Read') {
+      const input = message.tool_input || {};
+      const filePath = (input.file_path || input.path || '') as string;
+      if (filePath) {
+        logEvent({
+          worker_id: workerId,
+          goal_id: goalId,
+          event_type: 'file_read',
+          file_path: filePath,
+          tool_name: message.tool_name,
+          summary: `Read: ${filePath}`,
+        });
       }
     }
 

@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
 import type { Worker, WorkerStatus, RoleType, SubTask } from './types.js';
 import { getRoleConfig, buildSystemPrompt } from './role-engine.js';
-import { createWorker, updateWorkerStatus, deleteWorker } from './db.js';
+import { createWorker, updateWorkerStatus, deleteWorker, logEvent } from './db.js';
 import { SDKAdapter } from './sdk-adapter.js';
 
 export interface WorkerProcess {
@@ -61,6 +61,19 @@ export class ProcessPool extends EventEmitter {
     };
 
     createWorker(worker);
+
+    logEvent({
+      worker_id: id,
+      goal_id: goalId,
+      event_type: 'task_start',
+      task_id: subTask.id,
+      summary: `Worker ${id} (${role}) started task: ${subTask.title}`,
+      details: {
+        role,
+        taskTitle: subTask.title,
+        taskDescription: subTask.description,
+      },
+    });
 
     const wp: WorkerProcess = {
       worker,
@@ -177,6 +190,12 @@ export class ProcessPool extends EventEmitter {
       process.kill(wp.worker.pid, 'SIGSTOP');
       updateWorkerStatus(workerId, 'paused');
       wp.worker.status = 'paused';
+      logEvent({
+        worker_id: workerId,
+        goal_id: wp.goalId,
+        event_type: 'worker_paused',
+        summary: `Worker ${workerId} paused (SIGSTOP)`,
+      });
       this.emit('worker:paused', workerId);
       return true;
     } catch {
@@ -192,6 +211,12 @@ export class ProcessPool extends EventEmitter {
       process.kill(wp.worker.pid, 'SIGCONT');
       updateWorkerStatus(workerId, 'working');
       wp.worker.status = 'working';
+      logEvent({
+        worker_id: workerId,
+        goal_id: wp.goalId,
+        event_type: 'worker_resumed',
+        summary: `Worker ${workerId} resumed (SIGCONT)`,
+      });
       this.emit('worker:resumed', workerId);
       return true;
     } catch {
@@ -206,6 +231,13 @@ export class ProcessPool extends EventEmitter {
     try {
       updateWorkerStatus(workerId, 'stopping');
       wp.worker.status = 'stopping';
+
+      logEvent({
+        worker_id: workerId,
+        goal_id: wp.goalId,
+        event_type: 'worker_killed',
+        summary: `Worker ${workerId} killed (${force ? 'SIGKILL' : 'SIGTERM'})`,
+      });
 
       if (force) {
         wp.process.kill('SIGKILL');

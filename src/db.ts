@@ -62,6 +62,22 @@ function createTables(): void {
       stats TEXT NOT NULL DEFAULT '{}'
     );
 
+    -- Event-driven log: only key events (not per-message)
+    CREATE TABLE IF NOT EXISTS events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      worker_id TEXT NOT NULL,
+      goal_id TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      task_id TEXT,
+      file_path TEXT,
+      tool_name TEXT,
+      summary TEXT,
+      details TEXT,
+      token_count INTEGER,
+      timestamp TEXT NOT NULL
+    );
+
+    -- Legacy transcripts table kept for backward compatibility
     CREATE TABLE IF NOT EXISTS transcripts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       worker_id TEXT NOT NULL,
@@ -81,6 +97,9 @@ function createTables(): void {
     CREATE INDEX IF NOT EXISTS idx_subtasks_goal ON subtasks(goal_id);
     CREATE INDEX IF NOT EXISTS idx_subtasks_status ON subtasks(status);
     CREATE INDEX IF NOT EXISTS idx_workers_status ON workers(status);
+    CREATE INDEX IF NOT EXISTS idx_events_worker ON events(worker_id);
+    CREATE INDEX IF NOT EXISTS idx_events_goal ON events(goal_id);
+    CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type);
     CREATE INDEX IF NOT EXISTS idx_transcripts_worker ON transcripts(worker_id);
   `);
 }
@@ -223,7 +242,38 @@ export function deleteWorker(id: string): void {
   stmt.run(id);
 }
 
-// Transcript logging
+// Event-driven logging: only key events (not per-message)
+export function logEvent(event: {
+  worker_id: string;
+  goal_id: string;
+  event_type: string;
+  task_id?: string;
+  file_path?: string;
+  tool_name?: string;
+  summary?: string;
+  details?: Record<string, unknown>;
+  token_count?: number;
+}): void {
+  const stmt = getDb().prepare(`
+    INSERT INTO events (worker_id, goal_id, event_type, task_id, file_path, tool_name,
+      summary, details, token_count, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  stmt.run(
+    event.worker_id,
+    event.goal_id,
+    event.event_type,
+    event.task_id ?? null,
+    event.file_path ?? null,
+    event.tool_name ?? null,
+    event.summary ?? null,
+    event.details ? JSON.stringify(event.details) : null,
+    event.token_count ?? null,
+    new Date().toISOString()
+  );
+}
+
+// Legacy transcript logging — kept for backward compatibility but no longer used
 export function logTranscriptMessage(workerId: string, goalId: string, message: {
   type: string;
   content?: string;
