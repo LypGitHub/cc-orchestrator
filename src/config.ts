@@ -3,11 +3,15 @@ import { join } from 'path';
 import { homedir } from 'os';
 import type { OrchestratorConfig } from './types.js';
 
+function getDefaultDataDir(): string {
+  return process.env.CC_ORCH_DATA_DIR ?? join(homedir(), '.cc-orchestrator');
+}
+
 const DEFAULT_CONFIG: OrchestratorConfig = {
   port: 17890,
   maxWorkers: 4,
   minWorkers: 0,
-  dataDir: join(homedir(), '.cc-orchestrator'),
+  dataDir: getDefaultDataDir(),
   cpuThresholdHigh: 80,
   cpuThresholdCritical: 90,
   monitorIntervalMs: 5000,

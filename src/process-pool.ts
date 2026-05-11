@@ -110,9 +110,10 @@ export class ProcessPool extends EventEmitter {
 
   private buildClaudeArgs(config: ReturnType<typeof getRoleConfig>, subTask: SubTask, workerId: string): string[] {
     const args: string[] = [
-      '--sdk-url', 'stdio',
-      '--output-format', 'stream-json',
-      '--input-format', 'stream-json',
+      '-p',                               // --print: non-interactive mode
+      '--output-format', 'stream-json',   // JSON Lines output to stdout
+      '--input-format', 'stream-json',    // JSON Lines input from stdin
+      '--verbose',                        // stream-json requires verbose
       '--dangerously-skip-permissions',
       '--system-prompt', buildSystemPrompt(config.role, subTask.description),
       '--name', `${config.name}-${workerId}`,
@@ -138,7 +139,26 @@ export class ProcessPool extends EventEmitter {
 
     const message = {
       type: 'user',
-      content: this.buildTaskPrompt(subTask),
+      message: {
+        role: 'user',
+        content: this.buildTaskPrompt(subTask),
+      },
+      session_id: '',
+      parent_tool_use_id: null,
+    };
+
+    wp.stdin.write(JSON.stringify(message) + '\n');
+    return true;
+  }
+
+  endSession(workerId: string): boolean {
+    const wp = this.workers.get(workerId);
+    if (!wp || wp.process.killed) return false;
+
+    const message = {
+      type: 'control_request',
+      request: { subtype: 'end_session', reason: 'task_complete' },
+      request_id: `end_${Date.now()}`,
     };
 
     wp.stdin.write(JSON.stringify(message) + '\n');
