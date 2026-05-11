@@ -101,7 +101,7 @@ export class Orchestrator {
     const readyTasks = pending.filter(st => this.areDependenciesMet(st));
 
     for (let i = 0; i < Math.min(readyTasks.length, availableSlots); i++) {
-      const task = readyTasks[i];
+      const task = readyTasks[i]!;
       const goal = getGoal(task.goalId);
       if (!goal) continue;
 
