@@ -3,6 +3,7 @@ import { EventEmitter } from 'events';
 import type { Worker, WorkerStatus, RoleType, SubTask } from './types.js';
 import { getRoleConfig, buildSystemPrompt } from './role-engine.js';
 import { createWorker, updateWorkerStatus, deleteWorker } from './db.js';
+import { SDKAdapter } from './sdk-adapter.js';
 
 export interface WorkerProcess {
   worker: Worker;
@@ -17,6 +18,7 @@ export interface WorkerProcess {
 export class ProcessPool extends EventEmitter {
   private workers = new Map<string, WorkerProcess>();
   private idCounter = 0;
+  private sdkAdapter = new SDKAdapter();
 
   generateId(): string {
     this.idCounter++;
@@ -73,6 +75,18 @@ export class ProcessPool extends EventEmitter {
     this.workers.set(id, wp);
 
     child.stdout!.on('data', (data: Buffer) => {
+      const wp = this.workers.get(id);
+      if (!wp) return;
+
+      const messages = this.sdkAdapter.parseChunk(data);
+      for (const msg of messages) {
+        this.sdkAdapter.processMessage(id, wp.goalId, msg);
+
+        if (msg.type === 'assistant' && msg.content) {
+          wp.transcriptBuffer.push(msg.content);
+        }
+      }
+
       this.emit('worker:output', id, data);
     });
 

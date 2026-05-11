@@ -12,6 +12,9 @@ import {
   getSubTasksByGoal, getPendingSubTasks, createSubTask, updateSubTaskStatus,
   listWorkers as listDbWorkers, listActiveWorkers,
 } from './db.js';
+import { generateReport } from './report-generator.js';
+import { mergeSubTaskResults } from './result-merger.js';
+import { getReportsDir } from './config.js';
 
 export class Orchestrator {
   private config: OrchestratorConfig;
@@ -156,7 +159,15 @@ export class Orchestrator {
     if (allDone) {
       const anyFailed = subTasks.some(st => st.status === 'failed');
       updateGoalStatus(worker.goalId, anyFailed ? 'failed' : 'completed');
-      console.log(`[Goal ${worker.goalId}] ${anyFailed ? 'Failed' : 'Completed'}`);
+
+      // Generate report
+      const goalWorkers = workers.filter(w => w.goalId === worker.goalId);
+      const reportPath = generateReport(worker.goalId, goalWorkers, getReportsDir(this.config));
+      console.log(`[Goal ${worker.goalId}] Report saved: ${reportPath}`);
+
+      // Merge and log summary
+      const merged = mergeSubTaskResults(subTasks);
+      console.log(`[Goal ${worker.goalId}] ${anyFailed ? 'Failed' : 'Completed'}: ${merged.summary.split('\n')[0]}`);
     }
   }
 
