@@ -1,0 +1,13 @@
+#!/bin/bash
+# Wrapper script for cc-orch CLI
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# If built dist exists, use it; otherwise use tsx
+if [ -f "$PROJECT_DIR/dist/cli.js" ]; then
+  node "$PROJECT_DIR/dist/cli.js" "$@"
+else
+  npx tsx "$PROJECT_DIR/src/cli.ts" "$@"
+fi
