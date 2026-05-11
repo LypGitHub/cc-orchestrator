@@ -107,6 +107,18 @@ npm run build
 bash install_as_skill.sh --target openclaw
 ```
 
+#### OpenClaw 插件安装 / OpenClaw Plugin Installation
+
+如果选择 `--target openclaw` 或系统检测到 OpenClaw，安装脚本会自动：
+- 构建 `openclaw-plugin/` 目录中的 OpenClaw 插件
+- 将插件复制到 `~/.claude/plugins/marketplaces/lypgithub/cc-orchestrator/`
+- 自动配置 `~/.openclaw/openclaw.json` 注册插件
+
+When `--target openclaw` or OpenClaw is detected, the install script will:
+- Build the OpenClaw plugin from `openclaw-plugin/`
+- Copy it to `~/.claude/plugins/marketplaces/lypgithub/cc-orchestrator/`
+- Auto-configure `~/.openclaw/openclaw.json` to register the plugin
+
 ### 启动服务 / Start the Service
 
 ```bash
@@ -175,6 +187,29 @@ node dist/cli.js start
 | `pause <worker-id>` | 暂停 Worker | Pause a worker (SIGSTOP) |
 | `resume <worker-id>` | 恢复 Worker | Resume a worker (SIGCONT) |
 | `cancel <goal-id>` | 取消目标 | Cancel a goal |
+
+### OpenClaw 命令 / OpenClaw Commands
+
+安装 OpenClaw 插件后，可在 OpenClaw 对话中直接使用以下命令：
+
+After installing the OpenClaw plugin, these commands are available in OpenClaw conversations:
+
+| 命令 / Command | 中文说明 | English Description |
+|---|---|---|
+| `/cc-orch-run <description>` | 提交新目标 | Submit a new goal |
+| `/cc-orch-list` | 列出所有目标 | List all goals |
+| `/cc-orch-status [goal-id]` | 查看目标状态 | View goal status (latest if no ID) |
+| `/cc-orch-workers` | 查看所有 Worker | List all workers |
+| `/cc-orch-system` | 查看系统资源 | View system resources |
+| `/cc-orch-pause <worker-id>` | 暂停 Worker | Pause a worker (SIGSTOP) |
+| `/cc-orch-resume <worker-id>` | 恢复 Worker | Resume a worker (SIGCONT) |
+| `/cc-orch-cancel <goal-id>` | 取消目标 | Cancel a goal |
+| `/cc-orch-help` | 显示帮助 | Show command help |
+
+**示例 / Example:**
+```
+/cc-orch-run "实现用户认证系统，包含登录、注册、JWT token" --dir ~/works/my-project --workers 3 --priority high
+```
 
 ---
 

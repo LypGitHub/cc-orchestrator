@@ -1,9 +1,10 @@
 #!/bin/bash
 
 ##############################################################################
-# CC Orchestrator -- Claude Code / OpenClaw Skill 安装脚本
+# CC Orchestrator -- Claude Code / OpenClaw / Codex Skill 安装脚本
 #
 # 把当前仓库内容拷贝到目标 skill 目录并安装 Node.js 依赖。
+# 同时构建并安装 OpenClaw 插件（当 target 为 openclaw 或 auto 时）。
 #
 # 用法：bash install_as_skill.sh [--target auto|claude|codex|openclaw]
 ##############################################################################
@@ -81,7 +82,7 @@ resolve_skill_dir() {
             echo "${CODEX_HOME:-$HOME/.codex}/skills/cc-orchestrator"
             ;;
         openclaw)
-            echo "${OPENCLAW_HOME:-$HOME/skills}/cc-orchestrator"
+            echo "$HOME/.claude/skills/cc-orchestrator"
             ;;
     esac
 }
@@ -99,6 +100,98 @@ resolve_agent_label() {
             ;;
     esac
 }
+
+# -- OpenClaw Plugin Installation --------------------------------------------
+
+install_openclaw_plugin() {
+    local SCRIPT_DIR="$1"
+    local PLUGIN_DIR="$HOME/.claude/plugins/marketplaces/lypgithub/cc-orchestrator"
+    local OPENCLAW_CONFIG="$HOME/.openclaw/openclaw.json"
+
+    print_header "OpenClaw 插件安装"
+
+    print_info "OpenClaw 插件目录: $PLUGIN_DIR"
+
+    if [ -d "$PLUGIN_DIR" ]; then
+        print_warning "插件目录已存在，覆盖..."
+        rm -rf "$PLUGIN_DIR"
+    fi
+
+    mkdir -p "$PLUGIN_DIR"
+    print_success "插件目录已创建"
+
+    print_info "复制 OpenClaw 插件文件..."
+    rsync -a \
+        --exclude='node_modules' \
+        --exclude='dist' \
+        --exclude='.DS_Store' \
+        "$SCRIPT_DIR/openclaw-plugin/" "$PLUGIN_DIR/"
+    print_success "文件复制完成"
+
+    print_info "安装 OpenClaw 插件依赖..."
+    cd "$PLUGIN_DIR"
+    npm install
+    print_success "依赖安装完成"
+
+    print_info "编译 OpenClaw 插件..."
+    npm run build
+    print_success "编译完成"
+
+    # -- Auto-configure ~/.openclaw/openclaw.json -----------------------------
+    if [ -f "$OPENCLAW_CONFIG" ]; then
+        print_info "配置 OpenClaw 插件注册..."
+
+        # Use Node.js to safely modify JSON
+        node -e "
+const fs = require('fs');
+const path = '$OPENCLAW_CONFIG';
+const config = JSON.parse(fs.readFileSync(path, 'utf8'));
+
+// Add to plugins.allow if not present
+if (!config.plugins) config.plugins = { enabled: true, allow: [], entries: {} };
+if (!config.plugins.allow) config.plugins.allow = [];
+if (!config.plugins.allow.includes('cc-orchestrator')) {
+    config.plugins.allow.push('cc-orchestrator');
+    console.log('Added cc-orchestrator to plugins.allow');
+}
+
+// Add to plugins.entries if not present
+if (!config.plugins.entries) config.plugins.entries = {};
+if (!config.plugins.entries['cc-orchestrator']) {
+    config.plugins.entries['cc-orchestrator'] = { enabled: true };
+    console.log('Added cc-orchestrator to plugins.entries');
+}
+
+fs.writeFileSync(path, JSON.stringify(config, null, 2) + '\\n');
+console.log('OpenClaw config updated successfully');
+" && print_success "OpenClaw 配置已更新" || print_warning "OpenClaw 配置更新失败，请手动添加"
+    else
+        print_warning "未找到 OpenClaw 配置文件: $OPENCLAW_CONFIG"
+        print_info "请手动在 ~/.openclaw/openclaw.json 中添加:"
+        print_info '  plugins.allow: [..., "cc-orchestrator"]'
+        print_info '  plugins.entries.cc-orchestrator: { "enabled": true }'
+    fi
+
+    # -- Refresh OpenClaw plugin registry ----------------------------------
+    if command_exists openclaw; then
+        print_info "刷新 OpenClaw 插件注册表..."
+        openclaw plugins registry --refresh 2>/dev/null || print_warning "openclaw plugins registry --refresh 失败，请手动运行"
+        print_success "插件注册表已刷新"
+
+        print_info "重启 OpenClaw Gateway..."
+        launchctl unload "$HOME/Library/LaunchAgents/ai.openclaw.gateway.plist" 2>/dev/null
+        sleep 2
+        launchctl load "$HOME/Library/LaunchAgents/ai.openclaw.gateway.plist" 2>/dev/null
+        sleep 3
+        print_success "Gateway 已重启"
+    else
+        print_warning "未找到 openclaw 命令，跳过注册表刷新"
+    fi
+
+    print_success "OpenClaw 插件安装完成"
+}
+
+# -- Main ----------------------------------------------------------------------
 
 main() {
     parse_args "$@"
@@ -158,6 +251,11 @@ main() {
     npm run build
     print_success "编译完成"
 
+    # -- OpenClaw Plugin (when target is openclaw or auto with OpenClaw detected) --
+    if [ "$INSTALL_TARGET" = "openclaw" ] || [ -n "${OPENCLAW_HOME:-}" ] || [ -d "$HOME/.openclaw" ]; then
+        install_openclaw_plugin "$SCRIPT_DIR"
+    fi
+
     print_header "安装完成"
 
     print_success "已装到 $SKILL_DIR"
@@ -167,6 +265,18 @@ main() {
     print_info "  2. 启动服务:  cc-orch start"
     print_info "  3. 提交目标:  cc-orch run \"实现用户认证\" --dir ~/works/project"
     print_info "  4. 查看状态:  cc-orch system"
+
+    if [ "$INSTALL_TARGET" = "openclaw" ] || [ -d "$HOME/.openclaw" ]; then
+        echo ""
+        print_info "OpenClaw 插件命令："
+        print_info "  /cc-orch-run \"实现用户认证\" --dir ~/works/project"
+        print_info "  /cc-orch-list      列出所有目标"
+        print_info "  /cc-orch-status    查看目标状态"
+        print_info "  /cc-orch-workers   查看所有 Worker"
+        print_info "  /cc-orch-system    查看系统资源"
+        print_info "  /cc-orch-help      显示帮助"
+    fi
+
     echo ""
     print_info "冒烟测试（可选）："
     print_info "  cd $SKILL_DIR"

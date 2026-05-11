@@ -1,0 +1,25 @@
+{
+  "id": "cc-orchestrator",
+  "name": "CC Orchestrator (Claude Code Process Manager)",
+  "description": "OpenClaw plugin for CC Orchestrator. Submit coding goals, monitor workers, pause/resume processes, and view system status from within OpenClaw.",
+  "kind": "tool",
+  "version": "0.1.0",
+  "author": "LypGitHub",
+  "homepage": "https://github.com/LypGitHub/cc-orchestrator",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "apiHost": {
+        "type": "string",
+        "default": "127.0.0.1",
+        "description": "Host for CC Orchestrator HTTP API"
+      },
+      "apiPort": {
+        "type": "number",
+        "default": 17890,
+        "description": "Port for CC Orchestrator HTTP API"
+      }
+    }
+  }
+}
