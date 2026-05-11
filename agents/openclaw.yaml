@@ -1,0 +1,4 @@
+interface:
+  display_name: "CC Orchestrator"
+  short_description: "Intelligent multi-process Claude Code task orchestrator -- auto-decompose goals, assign roles, monitor system resources, and execute tasks in parallel with pause/resume capabilities."
+  default_prompt: "Run the task 'implement user authentication system' in directory ~/works/my-project with 3 workers"
